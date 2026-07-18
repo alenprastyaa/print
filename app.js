@@ -17,7 +17,7 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 // Database Connection
 // Menggunakan database 'jasa_printing', username 'root', password 'alen'
-const sequelize = new Sequelize('jasa_printing', 'root', '', {
+const sequelize = new Sequelize('jasa_printing', 'root', 'builder', {
     host: '127.0.0.1',
     dialect: 'mysql',
     logging: false
