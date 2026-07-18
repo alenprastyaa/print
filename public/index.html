@@ -1,0 +1,1127 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jasa Printing - Kalkulator Cetak Mandiri & Kelola Berkas</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Vue.js 3 CDN -->
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script>
+    <!-- SweetAlert2 -->
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <!-- PDF.js library to parse PDF page count in frontend -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+    <!-- Mammoth JS for reading Word files on client-side and estimate metadata / HTML -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+
+    <style>
+        body {
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            background-color: #f8fafc;
+        }
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 3px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+    </style>
+</head>
+<body class="text-slate-800 antialiased min-h-screen flex flex-col">
+
+    <div id="app" class="flex-grow flex flex-col" v-cloak>
+        <!-- Navbar -->
+        <nav class="bg-white border-b border-slate-100 sticky top-0 z-40 shadow-sm backdrop-blur-md bg-white/90">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="flex justify-between h-16">
+                    <div class="flex items-center">
+                        <div class="flex-shrink-0 flex items-center gap-2">
+                            <div class="p-2 bg-indigo-600 rounded-xl text-white">
+                                <i class="fa-solid fa-print text-xl"></i>
+                            </div>
+                            <span class="text-xl font-extrabold bg-gradient-to-r from-indigo-600 to-violet-600 bg-clip-text text-transparent">
+                                PrintCepat
+                            </span>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <button v-if="!isAdmin" @click="openLoginModal" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-slate-600 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition duration-200">
+                            <i class="fa-solid fa-lock text-xs"></i>
+                            Login Admin
+                        </button>
+                        <div v-else class="flex items-center gap-3">
+                            <span class="text-xs bg-indigo-100 text-indigo-800 px-3 py-1 rounded-full font-medium">
+                                <i class="fa-solid fa-user-shield mr-1"></i> Admin
+                            </span>
+                            <button @click="logout" class="flex items-center gap-2 px-4 py-2 text-sm font-semibold text-rose-600 hover:text-rose-700 hover:bg-rose-50 rounded-xl transition duration-200">
+                                <i class="fa-solid fa-power-off text-xs"></i>
+                                Logout
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content Wrapper -->
+        <main class="flex-grow max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            
+            <!-- Tab View for Users / Admin -->
+            <div>
+                <!-- USER INTERFACE -->
+                <div v-if="!isAdmin" class="space-y-8">
+                    <!-- Hero Section -->
+                    <div class="text-center max-w-2xl mx-auto space-y-4 py-4">
+                        <span class="px-3 py-1 text-xs font-semibold text-indigo-700 bg-indigo-50 border border-indigo-100 rounded-full">Solusi Cetak Tanpa Ribet</span>
+                        <h1 class="text-4xl font-extrabold text-slate-900 tracking-tight sm:text-5xl">
+                            Hitung Biaya Cetak <span class="bg-gradient-to-r from-indigo-600 to-purple-600 bg-clip-text text-transparent">Secara Otomatis</span>
+                        </h1>
+                        <p class="text-base text-slate-500">
+                            Unggah dokumen PDF atau Word Anda. Sistem kami akan membaca jumlah halaman secara cerdas dan memberikan kalkulasi harga akurat secara instan.
+                        </p>
+                    </div>
+
+                    <!-- Pricing Banner -->
+                    <div class="max-w-xl mx-auto bg-gradient-to-r from-indigo-500 to-indigo-700 rounded-2xl shadow-md p-6 text-white text-center flex justify-around items-center relative overflow-hidden">
+                        <div class="absolute -right-8 -top-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                        <div class="absolute -left-8 -bottom-8 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                        <div>
+                            <p class="text-xs text-indigo-100 uppercase tracking-wider font-semibold">Tarif Saat Ini</p>
+                            <p class="text-2xl font-extrabold mt-1">{{ formatRupiah(pricePerPage) }} <span class="text-xs font-normal text-indigo-200">/ halaman</span></p>
+                        </div>
+                        <div class="h-10 w-px bg-indigo-400"></div>
+                        <div class="text-left text-sm text-indigo-100">
+                            <ul class="space-y-1">
+                                <li><i class="fa-regular fa-circle-check text-indigo-300 mr-2"></i>Mendukung PDF & Word</li>
+                                <li><i class="fa-regular fa-circle-check text-indigo-300 mr-2"></i>Unggah berkas aman</li>
+                            </ul>
+                        </div>
+                    </div>
+
+                    <!-- Calculator & Order Form Section -->
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
+                        <!-- Left Panel: File Input & Metadata -->
+                        <div class="lg:col-span-7 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <i class="fa-regular fa-file-pdf"></i>
+                                </span>
+                                Langkah 1: Unggah Dokumen Anda
+                            </h2>
+
+                            <!-- Custom Drag Drop Area -->
+                            <div 
+                                @dragover.prevent="isDragging = true" 
+                                @dragleave.prevent="isDragging = false"
+                                @drop.prevent="handleDrop"
+                                :class="[
+                                    'border-2 border-dashed rounded-xl p-8 text-center cursor-pointer transition-all duration-300',
+                                    isDragging ? 'border-indigo-500 bg-indigo-50/50 scale-[0.99]' : 'border-slate-200 hover:border-indigo-400 hover:bg-slate-50/30'
+                                ]"
+                                @click="$refs.fileInput.click()"
+                            >
+                                <input 
+                                    type="file" 
+                                    ref="fileInput" 
+                                    @change="handleFileSelect" 
+                                    accept=".pdf,.doc,.docx" 
+                                    class="hidden"
+                                >
+                                
+                                <div class="space-y-4">
+                                    <div class="inline-flex p-4 bg-indigo-50 rounded-full text-indigo-600">
+                                        <i class="fa-solid fa-cloud-arrow-up text-3xl animate-bounce"></i>
+                                    </div>
+                                    <div class="space-y-1">
+                                        <p class="font-semibold text-slate-700">Pilih berkas atau tarik ke sini</p>
+                                        <p class="text-xs text-slate-400">PDF, DOC, atau DOCX (Maks. 15MB)</p>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <!-- Upload & Parsing Progress States -->
+                            <div v-if="isProcessing || isUploading" class="p-4 bg-slate-50 rounded-xl space-y-3 border border-slate-100">
+                                <div class="flex justify-between items-center text-sm text-slate-600">
+                                    <span class="font-medium flex items-center gap-2">
+                                        <i class="fa-solid fa-circle-notch animate-spin text-indigo-600"></i>
+                                        {{ isUploading ? 'Mengunggah berkas ke server...' : 'Menganalisis berkas dokumen...' }}
+                                    </span>
+                                    <span class="text-xs font-semibold text-indigo-600">{{ uploadProgress }}%</span>
+                                </div>
+                                <div class="w-full bg-slate-200 rounded-full h-1.5">
+                                    <div class="bg-indigo-600 h-1.5 rounded-full transition-all duration-300" :style="{ width: uploadProgress + '%' }"></div>
+                                </div>
+                            </div>
+
+                            <!-- File Details / Selected File -->
+                            <div v-if="selectedFile && !isProcessing && !isUploading" class="p-4 bg-emerald-50/50 border border-emerald-100 rounded-xl flex items-center justify-between">
+                                <div class="flex items-center gap-3">
+                                    <div class="p-3 bg-emerald-100 text-emerald-700 rounded-lg">
+                                        <i :class="getFileIconClass(selectedFile.name) + ' text-xl'"></i>
+                                    </div>
+                                    <div class="min-w-0">
+                                        <p class="font-semibold text-slate-800 text-sm truncate max-w-[200px] sm:max-w-[300px]" :title="selectedFile.name">
+                                            {{ selectedFile.name }}
+                                        </p>
+                                        <p class="text-xs text-slate-500">{{ formatBytes(selectedFile.size) }}</p>
+                                    </div>
+                                </div>
+                                <button @click="clearSelectedFile" class="text-slate-400 hover:text-rose-600 p-1 rounded-full hover:bg-slate-100 transition">
+                                    <i class="fa-solid fa-xmark text-lg"></i>
+                                </button>
+                            </div>
+
+                            <!-- Live Document Metadata -->
+                            <div v-if="pageCount !== null" class="grid grid-cols-2 gap-4 bg-slate-50 p-4 rounded-xl border border-slate-100">
+                                <div class="space-y-1">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Jumlah Halaman</p>
+                                    <p class="text-2xl font-extrabold text-slate-900">{{ pageCount }} Lembar</p>
+                                </div>
+                                <div class="space-y-1">
+                                    <p class="text-xs font-semibold text-slate-500 uppercase tracking-wider">Harga per Lembar</p>
+                                    <p class="text-2xl font-extrabold text-indigo-600">{{ formatRupiah(pricePerPage) }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Right Panel: Customer Information & Final Invoice -->
+                        <div class="lg:col-span-5 bg-white rounded-2xl border border-slate-100 p-6 shadow-sm space-y-6">
+                            <h2 class="text-xl font-bold text-slate-900 flex items-center gap-2">
+                                <span class="w-8 h-8 rounded-lg bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                                    <i class="fa-regular fa-id-card"></i>
+                                </span>
+                                Langkah 2: Isi Formulir Pemesanan
+                            </h2>
+
+                            <form @submit.prevent="submitOrder" class="space-y-4">
+                                <div class="space-y-1">
+                                    <label class="text-sm font-semibold text-slate-700 block">Nama Lengkap Anda</label>
+                                    <div class="relative">
+                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none text-slate-400">
+                                            <i class="fa-regular fa-user"></i>
+                                        </div>
+                                        <input 
+                                            v-model="form.customerName" 
+                                            type="text" 
+                                            required 
+                                            placeholder="Masukkan nama lengkap" 
+                                            class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+                                        >
+                                    </div>
+                                </div>
+
+                                <div class="space-y-1">
+                                    <label class="text-sm font-semibold text-slate-700 block">Catatan Tambahan (Opsional)</label>
+                                    <textarea 
+                                        v-model="form.note" 
+                                        rows="3" 
+                                        placeholder="Contoh: Print warna hitam putih, jilid mika, dll." 
+                                        class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"
+                                    ></textarea>
+                                </div>
+
+                                <!-- Invoice Summary Card -->
+                                <div class="border-t border-dashed border-slate-200 pt-4 mt-6 space-y-3">
+                                    <div class="flex justify-between text-sm text-slate-600">
+                                        <span>Rincian Biaya</span>
+                                        <span>{{ pageCount || 0 }} lembar x {{ formatRupiah(pricePerPage) }}</span>
+                                    </div>
+                                    <div class="flex justify-between items-center text-lg font-bold text-slate-900 pt-2 border-t border-slate-100">
+                                        <span>Total Tagihan</span>
+                                        <span class="text-indigo-600 text-xl font-extrabold">{{ formatRupiah(totalPriceCalculated) }}</span>
+                                    </div>
+                                </div>
+
+                                <!-- Submit Button -->
+                                <button 
+                                    type="submit" 
+                                    :disabled="!isFormValid || isUploading || isProcessing"
+                                    class="w-full bg-gradient-to-r from-indigo-600 to-indigo-700 hover:from-indigo-700 hover:to-indigo-800 text-white font-semibold py-3 px-4 rounded-xl shadow-sm hover:shadow transition duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2 mt-4"
+                                >
+                                    <i class="fa-solid fa-cart-shopping"></i>
+                                    Kirim Pesanan Cetak Sekarang
+                                </button>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- ADMIN INTERFACE -->
+                <div v-else class="space-y-8">
+                    <!-- Admin Header Dashboard -->
+                    <div class="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white border border-slate-100 p-6 rounded-2xl shadow-sm">
+                        <div class="space-y-1">
+                            <h1 class="text-2xl font-extrabold text-slate-950">Dashboard Admin</h1>
+                            <p class="text-sm text-slate-500">Kelola pesanan cetakan pelanggan dan perbarui biaya operasional.</p>
+                        </div>
+                        <div class="flex gap-3">
+                            <button @click="openSettingsModal" class="flex items-center gap-2 px-4 py-2 bg-indigo-50 text-indigo-700 hover:bg-indigo-100 rounded-xl font-semibold text-sm transition">
+                                <i class="fa-solid fa-gears"></i>
+                                Ubah Tarif Print
+                            </button>
+                            <button @click="fetchOrders" class="flex items-center justify-center w-10 h-10 bg-slate-50 hover:bg-slate-100 text-slate-600 rounded-xl transition border border-slate-200" title="Muat Ulang Data">
+                                <i class="fa-solid fa-rotate"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Metrics Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                        <!-- Total Orders -->
+                        <div class="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex items-center gap-4">
+                            <div class="p-4 bg-blue-50 text-blue-600 rounded-xl">
+                                <i class="fa-solid fa-file-invoice text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pesanan</p>
+                                <p class="text-2xl font-extrabold text-slate-900">{{ orders.length }}</p>
+                            </div>
+                        </div>
+                        <!-- Pending Orders -->
+                        <div class="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex items-center gap-4">
+                            <div class="p-4 bg-amber-50 text-amber-600 rounded-xl">
+                                <i class="fa-solid fa-clock-rotate-left text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Menunggu Proses</p>
+                                <p class="text-2xl font-extrabold text-slate-900">{{ orders.filter(o => o.status === 'Pending').length }}</p>
+                            </div>
+                        </div>
+                        <!-- Finished Orders -->
+                        <div class="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex items-center gap-4">
+                            <div class="p-4 bg-emerald-50 text-emerald-600 rounded-xl">
+                                <i class="fa-solid fa-circle-check text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Selesai Dicetak</p>
+                                <p class="text-2xl font-extrabold text-slate-900">{{ orders.filter(o => o.status === 'Selesai').length }}</p>
+                            </div>
+                        </div>
+                        <!-- Estimated Revenue -->
+                        <div class="bg-white border border-slate-100 p-6 rounded-2xl shadow-sm flex items-center gap-4">
+                            <div class="p-4 bg-indigo-50 text-indigo-600 rounded-xl">
+                                <i class="fa-solid fa-sack-dollar text-xl"></i>
+                            </div>
+                            <div>
+                                <p class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Total Pendapatan</p>
+                                <p class="text-2xl font-extrabold text-slate-900">{{ formatRupiah(totalRevenue) }}</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Orders Table Card -->
+                    <div class="bg-white border border-slate-100 rounded-2xl shadow-sm overflow-hidden">
+                        <div class="p-6 border-b border-slate-100 flex justify-between items-center flex-wrap gap-4">
+                            <h2 class="text-lg font-bold text-slate-900">Daftar Pesanan Cetak</h2>
+                            <div class="flex items-center gap-2">
+                                <span class="text-xs font-semibold text-slate-500">Filter Status:</span>
+                                <select v-model="filterStatus" class="border border-slate-200 text-xs rounded-lg px-2.5 py-1.5 focus:ring-1 focus:ring-indigo-500 outline-none">
+                                    <option value="Semua">Semua</option>
+                                    <option value="Pending">Pending</option>
+                                    <option value="Diproses">Diproses</option>
+                                    <option value="Selesai">Selesai</option>
+                                    <option value="Dibatalkan">Dibatalkan</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="overflow-x-auto">
+                            <table class="w-full text-left border-collapse">
+                                <thead>
+                                    <tr class="bg-slate-50 border-b border-slate-100 text-xs font-semibold text-slate-500 uppercase tracking-wider">
+                                        <th class="px-6 py-4">ID / Tanggal</th>
+                                        <th class="px-6 py-4">Nama Pelanggan</th>
+                                        <th class="px-6 py-4">Detail Berkas</th>
+                                        <th class="px-6 py-4">Hal / Harga</th>
+                                        <th class="px-6 py-4">Total Tagihan</th>
+                                        <th class="px-6 py-4">Status</th>
+                                        <th class="px-6 py-4 text-center">Aksi</th>
+                                    </tr>
+                                </thead>
+                                <tbody class="divide-y divide-slate-100 text-sm text-slate-600">
+                                    <tr v-if="filteredOrders.length === 0">
+                                        <td colspan="7" class="text-center py-12 text-slate-400 font-medium">
+                                            Tidak ada pesanan cetak yang ditemukan.
+                                        </td>
+                                    </tr>
+                                    <tr v-for="order in filteredOrders" :key="order.id" class="hover:bg-slate-50/50 transition">
+                                        <td class="px-6 py-4">
+                                            <div class="font-semibold text-slate-900">#{{ order.id }}</div>
+                                            <div class="text-xs text-slate-400 mt-0.5">{{ formatDate(order.createdAt) }}</div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="font-medium text-slate-900">{{ order.customerName }}</div>
+                                            <div v-if="order.note" class="text-xs text-slate-400 mt-1 italic max-w-xs truncate" :title="order.note">
+                                                Note: "{{ order.note }}"
+                                            </div>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center gap-2">
+                                                <i :class="getFileIconClass(order.fileName) + ' text-slate-400 text-lg'"></i>
+                                                <span class="font-medium text-slate-800 truncate max-w-[150px]" :title="order.fileName">{{ order.fileName }}</span>
+                                            </div>
+                                            <a :href="order.fileUrl" target="_blank" class="inline-flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800 font-medium mt-1">
+                                                <i class="fa-solid fa-arrow-down-to-line"></i> Unduh Berkas
+                                            </a>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div>{{ order.pageCount }} Lembar</div>
+                                            <div class="text-xs text-slate-400">{{ formatRupiah(order.pricePerPage) }} / lbr</div>
+                                        </td>
+                                        <td class="px-6 py-4 font-bold text-slate-900">
+                                            {{ formatRupiah(order.totalPrice) }}
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <span :class="getStatusBadgeClass(order.status)">
+                                                <i class="fa-solid fa-circle text-[6px] mr-1.5"></i>
+                                                {{ order.status }}
+                                            </span>
+                                        </td>
+                                        <td class="px-6 py-4">
+                                            <div class="flex items-center justify-center gap-2">
+                                                <button @click="openEditStatusModal(order)" class="px-3 py-1.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-lg text-xs transition flex items-center gap-1">
+                                                    <i class="fa-regular fa-pen-to-square"></i> Update
+                                                </button>
+                                                <button @click="deleteOrder(order.id)" class="p-1.5 text-rose-600 hover:bg-rose-50 rounded-lg transition" title="Hapus Pesanan">
+                                                    <i class="fa-regular fa-trash-can"></i>
+                                                </button>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+
+        <!-- Footer -->
+        <footer class="bg-white border-t border-slate-100 py-6 mt-12 text-center text-sm text-slate-500">
+            <div class="max-w-7xl mx-auto px-4">
+                &copy; 2026 PrintCepat - Jasa Cetak Online Profesional. Hak Cipta Dilindungi.
+            </div>
+        </footer>
+
+        <!-- LOGIN ADMIN MODAL -->
+        <div v-if="modals.login" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="text-lg font-bold text-slate-950 flex items-center gap-2">
+                        <i class="fa-solid fa-shield-halved text-indigo-600"></i>
+                        Autentikasi Admin
+                    </h3>
+                    <button @click="closeLoginModal" class="text-slate-400 hover:text-slate-600 transition p-1 rounded-full hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form @submit.prevent="handleLogin" class="p-6 space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700 block">Username</label>
+                        <input v-model="loginForm.username" type="text" required placeholder="admin" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition">
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700 block">Password</label>
+                        <input v-model="loginForm.password" type="password" required placeholder="••••••••" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition">
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-sm transition mt-2">
+                        Masuk ke Dashboard
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- SETTINGS MODAL -->
+        <div v-if="modals.settings" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="text-lg font-bold text-slate-950 flex items-center gap-2">
+                        <i class="fa-solid fa-gears text-indigo-600"></i>
+                        Pengaturan Tarif Jasa
+                    </h3>
+                    <button @click="closeSettingsModal" class="text-slate-400 hover:text-slate-600 transition p-1 rounded-full hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form @submit.prevent="saveSettings" class="p-6 space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700 block">Harga Cetak Per Lembar (Rp)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 pl-3.5 flex items-center text-slate-400 text-sm font-semibold">Rp</span>
+                            <input v-model.number="tempPricePerPage" type="number" required min="1" class="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition">
+                        </div>
+                        <p class="text-[11px] text-slate-400 mt-1">Ini akan mengubah acuan perkalian biaya cetak baru bagi pelanggan.</p>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-sm transition mt-2">
+                        Simpan Perubahan
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- EDIT ORDER STATUS MODAL -->
+        <div v-if="modals.editOrder" class="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4 z-50">
+            <div class="bg-white w-full max-w-md rounded-2xl shadow-xl overflow-hidden transform transition-all duration-300">
+                <div class="p-6 border-b border-slate-100 flex justify-between items-center bg-slate-50">
+                    <h3 class="text-lg font-bold text-slate-950">
+                        Perbarui Status Order #{{ activeOrder.id }}
+                    </h3>
+                    <button @click="closeEditStatusModal" class="text-slate-400 hover:text-slate-600 transition p-1 rounded-full hover:bg-slate-100">
+                        <i class="fa-solid fa-xmark"></i>
+                    </button>
+                </div>
+                <form @submit.prevent="updateOrderStatus" class="p-6 space-y-4">
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700 block">Status Pesanan</label>
+                        <select v-model="activeOrder.status" class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition bg-white">
+                            <option value="Pending">Pending</option>
+                            <option value="Diproses">Diproses</option>
+                            <option value="Selesai">Selesai</option>
+                            <option value="Dibatalkan">Dibatalkan</option>
+                        </select>
+                    </div>
+                    <div class="space-y-1">
+                        <label class="text-sm font-semibold text-slate-700 block">Catatan Tambahan Internal</label>
+                        <textarea v-model="activeOrder.note" rows="3" placeholder="Masukkan catatan tambahan..." class="w-full px-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 outline-none transition"></textarea>
+                    </div>
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white font-semibold py-2.5 rounded-xl shadow-sm transition mt-2">
+                        Perbarui Pesanan
+                    </button>
+                </form>
+            </div>
+        </div>
+
+    </div>
+
+    <!-- Script Application -->
+    <script>
+        const { createApp, ref, computed, onMounted } = Vue;
+
+        createApp({
+            setup() {
+                // States & Data Bindings
+                const pricePerPage = ref(1000);
+                const tempPricePerPage = ref(1000);
+                const pageCount = ref(null);
+                const isDragging = ref(false);
+                const isProcessing = ref(false);
+                const isUploading = ref(false);
+                const uploadProgress = ref(0);
+                const selectedFile = ref(null);
+                
+                // Upload Result Storage
+                const uploadedFileData = ref({
+                    filename: '',
+                    url: '',
+                    size: 0
+                });
+
+                // Customer Order Form
+                const form = ref({
+                    customerName: '',
+                    note: ''
+                });
+
+                // Admin & Auth States
+                const isAdmin = ref(false);
+                const token = ref(localStorage.getItem('admin_token') || null);
+                const loginForm = ref({ username: '', password: '' });
+                const orders = ref([]);
+                const filterStatus = ref('Semua');
+
+                // Active edit state
+                const activeOrder = ref({ id: null, status: '', note: '' });
+
+                // Modal view controls
+                const modals = ref({
+                    login: false,
+                    settings: false,
+                    editOrder: false
+                });
+
+                // API Endpoints Config
+                const API_UPLOAD_URL = 'https://upload-file.applicationservice.id/api/upload-file';
+
+                // On component mount
+                onMounted(() => {
+                    fetchSettings();
+                    if (token.value) {
+                        isAdmin.value = true;
+                        fetchOrders();
+                    }
+                });
+
+                // Computed Properties
+                const totalPriceCalculated = computed(() => {
+                    if (pageCount.value === null) return 0;
+                    return pageCount.value * pricePerPage.value;
+                });
+
+                const isFormValid = computed(() => {
+                    return form.value.customerName.trim() !== '' && 
+                           pageCount.value !== null && 
+                           pageCount.value > 0 && 
+                           uploadedFileData.value.url !== '';
+                });
+
+                const filteredOrders = computed(() => {
+                    if (filterStatus.value === 'Semua') {
+                        return orders.value;
+                    }
+                    return orders.value.filter(o => o.status === filterStatus.value);
+                });
+
+                const totalRevenue = computed(() => {
+                    return orders.value
+                        .filter(o => o.status === 'Selesai')
+                        .reduce((acc, curr) => acc + curr.totalPrice, 0);
+                });
+
+                // Methods
+                const fetchSettings = async () => {
+                    try {
+                        const res = await fetch('/api/settings');
+                        const json = await res.json();
+                        if (json.status === 200 && json.data.price_per_page) {
+                            pricePerPage.value = parseInt(json.data.price_per_page, 10);
+                        }
+                    } catch (err) {
+                        console.error('Gagal memuat harga dasar per lembar', err);
+                    }
+                };
+
+                // Client-side Page Counter Engine
+                const countPages = async (file) => {
+                    isProcessing.value = true;
+                    uploadProgress.value = 10; // Init parsing progress visual state
+                    
+                    try {
+                        const fileExtension = file.name.split('.').pop().toLowerCase();
+                        
+                        if (fileExtension === 'pdf') {
+                            const reader = new FileReader();
+                            reader.onload = async function() {
+                                try {
+                                    const typedarray = new Uint8Array(this.result);
+                                    const pdf = await pdfjsLib.getDocument({ data: typedarray }).promise;
+                                    pageCount.value = pdf.numPages;
+                                    uploadProgress.value = 100;
+                                    setTimeout(() => isProcessing.value = false, 400);
+                                } catch (e) {
+                                    handleParsingError();
+                                }
+                            };
+                            reader.readAsArrayBuffer(file);
+
+                        } else if (fileExtension === 'docx') {
+                            const reader = new FileReader();
+                            reader.onload = async function(loadEvent) {
+                                try {
+                                    const arrayBuffer = loadEvent.target.result;
+                                    // Use Mammoth js client-side parsing estimation
+                                    // Estimates page count through structural paragraphs estimation
+                                    const result = await mammoth.convertToHtml({ arrayBuffer: arrayBuffer });
+                                    const htmlContent = result.value;
+                                    
+                                    // Heuristic estimation: ~350 words or ~1500 chars with formatting tags is roughly equivalent to a standard word page
+                                    const textLength = htmlContent.replace(/<[^>]*>/g, '').trim().length;
+                                    const estimatedPages = Math.max(1, Math.ceil(textLength / 1600));
+                                    
+                                    pageCount.value = estimatedPages;
+                                    uploadProgress.value = 100;
+                                    setTimeout(() => isProcessing.value = false, 400);
+                                } catch (e) {
+                                    handleParsingError();
+                                }
+                            };
+                            reader.readAsArrayBuffer(file);
+                        } else if (fileExtension === 'doc') {
+                            // Non-standard binary Word format (.doc) cannot be easily read client-side with mammoth
+                            // Give default page count warning
+                            Swal.fire({
+                                icon: 'info',
+                                title: 'Format Berkas Lama (.doc)',
+                                text: 'Tidak dapat mengurai jumlah halaman secara otomatis untuk berkas .doc. Kami berasumsi dokumen memiliki 1 halaman. Anda dapat menyesuaikannya saat konfirmasi cetak.',
+                                confirmButtonText: 'Lanjutkan',
+                                confirmButtonColor: '#4f46e5'
+                            });
+                            pageCount.value = 1;
+                            isProcessing.value = false;
+                        }
+                    } catch (error) {
+                        handleParsingError();
+                    }
+                };
+
+                const handleParsingError = () => {
+                    isProcessing.value = false;
+                    Swal.fire({
+                        icon: 'warning',
+                        title: 'Gagal Membaca Dokumen',
+                        text: 'Aplikasi tidak dapat membaca jumlah halaman secara otomatis. Berkas akan diset ke 1 halaman default.',
+                        confirmButtonText: 'Selesai',
+                        confirmButtonColor: '#4f46e5'
+                    });
+                    pageCount.value = 1;
+                };
+
+                // File Upload Engine
+                const uploadFileToServer = async (file) => {
+                    isUploading.value = true;
+                    uploadProgress.value = 25;
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    try {
+                        // Simulating a steady progress bar
+                        const interval = setInterval(() => {
+                            if (uploadProgress.value < 90) {
+                                uploadProgress.value += 15;
+                            }
+                        }, 200);
+
+                        const response = await fetch(API_UPLOAD_URL, {
+                            method: 'POST',
+                            body: formData
+                        });
+
+                        clearInterval(interval);
+                        uploadProgress.value = 100;
+
+                        const responseData = await response.json();
+
+                        if (response.ok && responseData.status === 200) {
+                            uploadedFileData.value = {
+                                filename: responseData.data.filename,
+                                url: responseData.data.url,
+                                size: responseData.data.size
+                            };
+                            isUploading.value = false;
+                        } else {
+                            throw new Error(responseData.message || 'Upload gagal');
+                        }
+                    } catch (error) {
+                        isUploading.value = false;
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Unggah Berkas Gagal',
+                            text: 'Terjadi masalah saat mengirim dokumen ke server eksternal. Silakan coba kembali.',
+                            confirmButtonText: 'Mengerti',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                        clearSelectedFile();
+                    }
+                };
+
+                // Selection Handlers
+                const handleFileSelect = (event) => {
+                    const file = event.target.files[0];
+                    if (file) {
+                        processSelectedFile(file);
+                    }
+                };
+
+                const handleDrop = (event) => {
+                    isDragging.value = false;
+                    const file = event.dataTransfer.files[0];
+                    if (file) {
+                        processSelectedFile(file);
+                    }
+                };
+
+                const processSelectedFile = (file) => {
+                    const allowedTypes = ['.pdf', '.doc', '.docx'];
+                    const extension = '.' + file.name.split('.').pop().toLowerCase();
+                    
+                    if (!allowedTypes.includes(extension)) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Format Berkas Salah',
+                            text: 'Hanya berkas berekstensi PDF atau Word (.doc, .docx) yang diizinkan!',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                        return;
+                    }
+
+                    // Limit to 15MB
+                    if (file.size > 15 * 1024 * 1024) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Ukuran Terlalu Besar',
+                            text: 'Maksimum ukuran berkas adalah 15 megabita (MB).',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                        return;
+                    }
+
+                    selectedFile.value = file;
+                    countPages(file);
+                    uploadFileToServer(file);
+                };
+
+                const clearSelectedFile = () => {
+                    selectedFile.value = null;
+                    pageCount.value = null;
+                    uploadedFileData.value = { filename: '', url: '', size: 0 };
+                    if (this.$refs && this.$refs.fileInput) {
+                        this.$refs.fileInput.value = '';
+                    }
+                };
+
+                // Form Submissions
+                const submitOrder = async () => {
+                    if (!isFormValid.value) return;
+
+                    const payload = {
+                        customerName: form.value.customerName,
+                        fileName: selectedFile.value.name,
+                        fileUrl: uploadedFileData.value.url,
+                        pageCount: pageCount.value,
+                        pricePerPage: pricePerPage.value,
+                        totalPrice: totalPriceCalculated.value,
+                        note: form.value.note
+                    };
+
+                    try {
+                        const response = await fetch('/api/orders', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(payload)
+                        });
+
+                        const json = await response.json();
+
+                        if (response.ok && json.status === 201) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Pesanan Dikirim!',
+                                html: `<p>Terima kasih <b>${payload.customerName}</b>. Pesanan Anda telah tersimpan dengan total biaya:</p><h3 class="text-xl font-bold text-indigo-600 mt-2">${formatRupiah(payload.totalPrice)}</h3><p class="text-xs text-slate-400 mt-2">ID Transaksi: #${json.data.id}</p>`,
+                                confirmButtonText: 'Selesai',
+                                confirmButtonColor: '#4f46e5'
+                            });
+                            
+                            // Reset state
+                            clearSelectedFile();
+                            form.value.customerName = '';
+                            form.value.note = '';
+                        } else {
+                            throw new Error(json.message);
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Mengirim Pesanan',
+                            text: error.message || 'Gagal menyimpan pesanan.',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                    }
+                };
+
+                // Admin Controls
+                const handleLogin = async () => {
+                    try {
+                        const response = await fetch('/api/auth/login', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify(loginForm.value)
+                        });
+
+                        const json = await response.json();
+
+                        if (response.ok && json.status === 200) {
+                            token.value = json.token;
+                            localStorage.setItem('admin_token', json.token);
+                            isAdmin.value = true;
+                            modals.value.login = false;
+                            
+                            // Reset login form fields
+                            loginForm.value = { username: '', password: '' };
+
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Sesi Terbuka',
+                                text: 'Berhasil login sebagai Administrator!',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+
+                            fetchOrders();
+                        } else {
+                            throw new Error(json.message);
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Autentikasi',
+                            text: error.message || 'Periksa kembali kredensial admin Anda.',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                    }
+                };
+
+                const fetchOrders = async () => {
+                    if (!token.value) return;
+                    try {
+                        const response = await fetch('/api/orders', {
+                            headers: { 'Authorization': `Bearer ${token.value}` }
+                        });
+                        const json = await response.json();
+                        if (json.status === 200) {
+                            orders.value = json.data;
+                        } else {
+                            throw new Error(json.message);
+                        }
+                    } catch (error) {
+                        console.error('Error fetching orders:', error);
+                    }
+                };
+
+                const updateOrderStatus = async () => {
+                    try {
+                        const response = await fetch(`/api/orders/${activeOrder.value.id}`, {
+                            method: 'PUT',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token.value}`
+                            },
+                            body: JSON.stringify({
+                                status: activeOrder.value.status,
+                                note: activeOrder.value.note
+                            })
+                        });
+
+                        const json = await response.json();
+
+                        if (response.ok && json.status === 200) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Status Diperbarui',
+                                text: 'Status pesanan cetakan sukses diubah!',
+                                timer: 1200,
+                                showConfirmButton: false
+                            });
+                            modals.value.editOrder = false;
+                            fetchOrders();
+                        } else {
+                            throw new Error(json.message);
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Gagal Update',
+                            text: error.message || 'Gagal memperbarui status order.',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                    }
+                };
+
+                const deleteOrder = (id) => {
+                    Swal.fire({
+                        title: 'Apakah Anda Yakin?',
+                        text: "Data pesanan ini akan dihapus permanen dari sistem!",
+                        icon: 'warning',
+                        showCancelButton: true,
+                        confirmButtonColor: '#d33',
+                        cancelButtonColor: '#3085d6',
+                        confirmButtonText: 'Ya, Hapus!',
+                        cancelButtonText: 'Batal'
+                    }).then(async (result) => {
+                        if (result.isConfirmed) {
+                            try {
+                                const response = await fetch(`/api/orders/${id}`, {
+                                    method: 'DELETE',
+                                    headers: { 'Authorization': `Bearer ${token.value}` }
+                                });
+                                const json = await response.json();
+
+                                if (response.ok && json.status === 200) {
+                                    Swal.fire(
+                                        'Terhapus!',
+                                        'Data transaksi telah berhasil dihilangkan.',
+                                        'success'
+                                    );
+                                    fetchOrders();
+                                } else {
+                                    throw new Error(json.message);
+                                }
+                            } catch (error) {
+                                Swal.fire('Error', error.message || 'Gagal menghapus data.', 'error');
+                            }
+                        }
+                    });
+                };
+
+                const saveSettings = async () => {
+                    try {
+                        const response = await fetch('/api/settings', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                'Authorization': `Bearer ${token.value}`
+                            },
+                            body: JSON.stringify({ price_per_page: tempPricePerPage.value })
+                        });
+
+                        const json = await response.json();
+
+                        if (response.ok && json.status === 200) {
+                            pricePerPage.value = tempPricePerPage.value;
+                            modals.value.settings = false;
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Konfigurasi Disimpan',
+                                text: 'Biaya cetak per halaman baru siap digunakan.',
+                                timer: 1500,
+                                showConfirmButton: false
+                            });
+                        } else {
+                            throw new Error(json.message);
+                        }
+                    } catch (error) {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Error',
+                            text: error.message || 'Gagal menyimpan pengaturan.',
+                            confirmButtonColor: '#f43f5e'
+                        });
+                    }
+                };
+
+                const logout = () => {
+                    token.value = null;
+                    localStorage.removeItem('admin_token');
+                    isAdmin.value = false;
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Sesi Selesai',
+                        text: 'Berhasil keluar dari dashboard admin.',
+                        timer: 1500,
+                        showConfirmButton: false
+                    });
+                };
+
+                // Helpers UI
+                const formatRupiah = (value) => {
+                    return new Intl.NumberFormat('id-ID', {
+                        style: 'currency',
+                        currency: 'IDR',
+                        minimumFractionDigits: 0
+                    }).format(value);
+                };
+
+                const formatDate = (dateString) => {
+                    const options = { year: 'numeric', month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' };
+                    return new Date(dateString).toLocaleDateString('id-ID', options);
+                };
+
+                const formatBytes = (bytes, decimals = 2) => {
+                    if (bytes === 0) return '0 Bytes';
+                    const k = 1024;
+                    const dm = decimals < 0 ? 0 : decimals;
+                    const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+                    const i = Math.floor(Math.log(bytes) / Math.log(k));
+                    return parseFloat((bytes / Math.pow(k, i)).toFixed(dm)) + ' ' + sizes[i];
+                };
+
+                const getFileIconClass = (fileName) => {
+                    if (!fileName) return 'fa-regular fa-file';
+                    const ext = fileName.split('.').pop().toLowerCase();
+                    if (ext === 'pdf') return 'fa-regular fa-file-pdf text-rose-500';
+                    if (ext === 'doc' || ext === 'docx') return 'fa-regular fa-file-word text-blue-500';
+                    return 'fa-regular fa-file';
+                };
+
+                const getStatusBadgeClass = (status) => {
+                    switch (status) {
+                        case 'Pending':
+                            return 'inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold bg-amber-50 text-amber-800 border border-amber-200';
+                        case 'Diproses':
+                            return 'inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold bg-blue-50 text-blue-800 border border-blue-200';
+                        case 'Selesai':
+                            return 'inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold bg-emerald-50 text-emerald-800 border border-emerald-200';
+                        case 'Dibatalkan':
+                            return 'inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold bg-rose-50 text-rose-800 border border-rose-200';
+                        default:
+                            return 'inline-flex items-center px-2.5 py-1.5 rounded-full text-xs font-semibold bg-slate-50 text-slate-800';
+                    }
+                };
+
+                // Modals Open / Close Helpers
+                const openLoginModal = () => modals.value.login = true;
+                const closeLoginModal = () => modals.value.login = false;
+                
+                const openSettingsModal = () => {
+                    tempPricePerPage.value = pricePerPage.value;
+                    modals.value.settings = true;
+                };
+                const closeSettingsModal = () => modals.value.settings = false;
+
+                const openEditStatusModal = (order) => {
+                    activeOrder.value = { ...order };
+                    modals.value.editOrder = true;
+                };
+                const closeEditStatusModal = () => modals.value.editOrder = false;
+
+                return {
+                    pricePerPage,
+                    tempPricePerPage,
+                    pageCount,
+                    isDragging,
+                    isProcessing,
+                    isUploading,
+                    uploadProgress,
+                    selectedFile,
+                    uploadedFileData,
+                    form,
+                    isAdmin,
+                    loginForm,
+                    orders,
+                    filterStatus,
+                    activeOrder,
+                    modals,
+                    totalPriceCalculated,
+                    isFormValid,
+                    filteredOrders,
+                    totalRevenue,
+                    handleFileSelect,
+                    handleDrop,
+                    clearSelectedFile,
+                    submitOrder,
+                    openLoginModal,
+                    closeLoginModal,
+                    handleLogin,
+                    logout,
+                    openSettingsModal,
+                    closeSettingsModal,
+                    saveSettings,
+                    openEditStatusModal,
+                    closeEditStatusModal,
+                    updateOrderStatus,
+                    deleteOrder,
+                    formatRupiah,
+                    formatDate,
+                    formatBytes,
+                    getFileIconClass,
+                    getStatusBadgeClass,
+                    fetchOrders
+                };
+            }
+        }).mount('#app');
+    </script>
+</body>
+</html>
